@@ -18,6 +18,28 @@ def interpolate_zero_rate(t, maturities, swap_rates):
     return interp_df
 
 
+def analytic_delta(notional, start, maturities, freq, swap_rate):
+    """
+    Calculation of DV01 of a swap with respect to the fixed (swap) rate
+    """
+    # Create a time grid of cashflows
+    time_grid = [
+        np.arange(start + freq, maturities[i] + freq, freq)
+        for i in range(len(maturities))
+    ]
+    tau = freq
+    delta = []
+
+    for time in time_grid:
+        d = 0  # Reset d for each swap
+        for t in time:
+            d += tau * interpolate_zero_rate(t, maturities, swap_rate)
+        delta.append(d)
+
+    delta = np.array(delta) * notional
+    return delta
+
+
 def single_curve(notional, start, end, freq, swap_rate, swap_type, discount_rate):
     """
     Calculate the present value of a swap using the discount curve.
@@ -175,6 +197,13 @@ def main():
     swaps_final = evaluate_instruments(optimized_rates, maturities, instruments)
 
     print(f"Optimised swap values = {swaps_final}")
+
+    market_deltas = analytic_delta(1, 0, maturities, 0.25, swap_rates)
+    optimised_deltas = analytic_delta(1, 0, maturities, 0.25, optimized_rates)
+
+    print(f"Market deltas = {market_deltas}")
+    print(f"Optimised deltas = {optimised_deltas}")
+    print(f"Differences in deltas = {optimised_deltas - market_deltas}")
 
     # Plot the initial, market rates and optimized curves
     plt.plot(
